@@ -673,8 +673,8 @@ async function run(){
       statusBar.className = 'small'; statusBar.style.margin = '4px 0 8px 0'; statusBar.id = `status_${loc.id}`;
       locContainer.appendChild(statusBar);
 
-      const chartsGrid = document.createElement('div'); chartsGrid.className = 'grid-3'; locContainer.appendChild(chartsGrid);
-      const chartIds = ['TWS','TWD','PMSL','RAIN','T2M','SWH'].map(k => `chart_${loc.id}_${k}`);
+      const chartsGrid = document.createElement('div'); chartsGrid.className = 'grid'; locContainer.appendChild(chartsGrid);
+      const chartIds = ['TWS','TWD','RAIN','T2M','PMSL','SWH'].map(k => `chart_${loc.id}_${k}`);
       paneCharts[loc.id] = chartIds.map(id => id);
       chartIds.forEach(id => {
         const div = document.createElement('div');
