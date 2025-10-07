@@ -618,7 +618,6 @@ function concatSamples(list){
   });
   return { s:S, d:D };
 }
-const BIN_SIZE = 2;
 
 function binWindsCustom(speeds, dirs){
   // 36 direction bins (10° each), and fixed TWS bins from TWS_BINS
@@ -1045,12 +1044,17 @@ async function run(){
       renderPlotOrMsg(`chart_${loc.id}_T2M`,  makeTraces('temperature_2m','T2m (°C)'),  layout('Air Temperature (°C)'));
 
       const waveTraces = [];
-      modelsWithData.forEach(mdl => {
-        const rec = modelSeries[mdl];
-        if (rec && rec.wave_height){
-          waveTraces.push({ x: rec.wave_time || rec.time, y: rec.wave_height, name: nameOf(mdl)+' (marine)', mode:'lines', line:{width:2} });
-        }
-      });
+	  const marineRec = Object.values(modelSeries).find(r => r && r.wave_height);
+	  if (marineRec){
+		waveTraces.push({
+		x: marineRec.wave_time || marineRec.time,
+		y: marineRec.wave_height,
+		name: 'Marine (SWH)',
+		mode:'lines',
+		line:{width:2}
+		});
+	  }
+	  
       renderPlotOrMsg(`chart_${loc.id}_SWH`,  waveTraces, layout('Significant Wave Height (m)'));
 
       // ---- Wind Rose render (populate options then draw) ----
@@ -1143,7 +1147,7 @@ async function run(){
       const twsCard = document.createElement('div'); twsCard.className = 'card';
       twsCard.innerHTML = `
         <div class='section-title'>TWS (kn) — by Time × Model</div>
-        <div class="legend"><span class="badge">TWS bins: &lt;5 blue, 5–10 green, 10–15 yellow, 15–20 orange, 20–25 red, 25–30 maroon, &gt;30 purple</span></div>
+        <div class="legend"><span class="badge">TWS bins: ${TWS_BIN_LABELS.join(', ')}</span></div>
         <div id="tbl_tws_${loc.id}"></div>`;
       tablesWrap.appendChild(twsCard);
 
@@ -1891,7 +1895,6 @@ function concatSamples(list){
   });
   return { s:S, d:D };
 }
-const BIN_SIZE = 2;
 
 function binWindsCustom(speeds, dirs){
   // 36 direction bins (10° each), and fixed TWS bins from TWS_BINS
@@ -2416,7 +2419,7 @@ async function run(){
       const twsCard = document.createElement('div'); twsCard.className = 'card';
       twsCard.innerHTML = `
         <div class='section-title'>TWS (kn) — by Time × Model</div>
-        <div class="legend"><span class="badge">TWS bins: &lt;5 blue, 5–10 green, 10–15 yellow, 15–20 orange, 20–25 red, 25–30 maroon, &gt;30 purple</span></div>
+        <div class="legend"><span class="badge">TWS bins: ${TWS_BIN_LABELS.join(', ')}</span></div>
         <div id="tbl_tws_${loc.id}"></div>`;
       tablesWrap.appendChild(twsCard);
 
