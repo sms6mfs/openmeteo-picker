@@ -192,11 +192,27 @@
   <div class="footer">Data © Open-Meteo & respective model providers. Free for non-commercial use.</div>
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const hdr = document.querySelector('header');
-    const setPad = () => { if (!hdr) return; document.body.style.setProperty('--header-h', hdr.offsetHeight + 'px'); };
-    setPad(); window.addEventListener('resize', setPad);
-  });
+document.addEventListener('DOMContentLoaded', () => {
+  const hdr = document.querySelector('header');
+  const setPad = () => { if (!hdr) return; document.body.style.setProperty('--header-h', hdr.offsetHeight + 'px'); };
+  setPad(); window.addEventListener('resize', setPad);
+
+  // --- Dedupe the controls panel if it was injected twice ---
+  const maps = document.querySelectorAll('#map'); // should be exactly 1
+  if (maps.length > 1) {
+    // keep the first; remove later duplicates
+    for (let i = 1; i < maps.length; i++) {
+      const dupPanel = maps[i].closest('.panel');
+      if (dupPanel) dupPanel.remove(); else maps[i].remove();
+    }
+  }
+});
+
+const pruneDupMaps = () => {
+  const maps = document.querySelectorAll('#map');
+  for (let i = 1; i < maps.length; i++) (maps[i].closest('.panel') || maps[i]).remove();
+};
+new MutationObserver(pruneDupMaps).observe(document.body, { childList: true, subtree: true });
 
 /* ==== Model mapping ==== */
 const MODEL_CODES = {
