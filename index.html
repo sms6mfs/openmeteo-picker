@@ -59,7 +59,16 @@
     .tab-pane.active { display:block; }
     @media (max-width:1100px){ .container { grid-template-columns:1fr; } #map { height:320px; } }
     @media (max-width:900px){ .profile-row { flex-direction:column; } .profile-left,.profile-right{ flex:0 0 auto; width:100%; } }
-    .table-wrap { overflow:auto; }
+    .table-wrap {max-height: 52vh; overflow: auto; border: 1px solid #2a2f3a; border-radius: 10px;}
+	.table {width: 100%; border-collapse: collapse; table-layout: fixed;font-size: clamp(12px, 0.95vw, 14px); line-height: 1.25; }
+	.table th, .table td {padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.06); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	.table thead th { position: sticky; top: 0; z-index: 1; text-align: left; background: linear-gradient(0deg, rgba(0,0,0,0.0), rgba(0,0,0,0.0)) , #151922; backdrop-filter: saturate(120%) blur(2px); }
+	.table .num { text-align: right; }
+	.table.table--compact th, 
+	.table.table--compact td { padding: 4px 6px; }
+	@media (max-width: 900px) {
+	  .table-wrap { max-height: 44vh; }
+	  .grid { grid-template-columns: 1fr; } }
     .heat { width:100%; border-collapse:collapse; font-size:12px; }
     .heat th, .heat td { border-bottom:1px solid #1d2536; padding:6px 8px; text-align:right; }
     .heat th:first-child, .heat td:first-child { text-align:left; position:sticky; left:0; background:#121722; }
@@ -132,7 +141,7 @@
         <label>and
           <input type="time" id="tod_to" value="18:00" style="width:120px">
         </label>
-        <label><input type="checkbox" id="tod_enable" checked> Apply filter</label>
+        <label><input type="checkbox" id="tod_enable"> Apply filter</label>
       </div>
       <div class="small muted">Filter is applied client-side (always). When possible (single-day ERA queries), we also hint the server to reduce bytes.</div>
 
@@ -146,7 +155,7 @@
           <label><input type="checkbox" class="var" value="wind_gusts_10m" checked> Wind Gusts (10 m)</label><br>
           <label><input type="checkbox" class="var" value="pressure_msl" checked> Sea-level Pressure</label><br>
           <label><input type="checkbox" class="var" value="cloud_cover" checked> Cloud Cover Total</label><br>
-          <label><input type="checkbox" class="var" value="boundary_layer_height"> Boundary Layer Height (PBL)</label><br>
+          <label><input type="checkbox" class="var" value="boundary_layer_height" checked> Boundary Layer Height (PBL)</label><br>
         </div>
         <div>
           <div class="section-title">Marine</div>
@@ -195,7 +204,8 @@ const MODEL_CODES = {
   "Meteo-France ARPEGE Europe": "arpege_europe",
   "Meteo-France AROME France": "arome_france",
   "Meteo-France AROME France HD": "arome_france_hd",
-  "UK Met Office Seamless": "ukmo_seamless",
+  /* "UKMO UKV 2km": "ukmo_uk_deterministic_2km",*/
+  "UKMO Seamless": "ukmo_seamless",
   "NCEP GFS Global Seamless": "gfs_seamless",
   "NCEP HRRR U.S. Conus": "hrrr_conus",
   "NCEP NAM U.S. Conus": "nam_conus",
@@ -408,6 +418,41 @@ function activateTab(locId){
   (paneCharts[locId] || []).forEach(divId => { const el = document.getElementById(divId); if (el) Plotly.Plots.resize(el); });
 }
 
+function autosizeTable(tableEl) {
+  if (!tableEl || !tableEl.tHead || !tableEl.tHead.rows.length) return;
+  const cols = tableEl.tHead.rows[0].cells.length;
+  // Ensure a <colgroup> exists
+  let cg = tableEl.querySelector('colgroup');
+  if (!cg) {
+    cg = document.createElement('colgroup');
+    tableEl.insertBefore(cg, tableEl.firstChild);
+  }
+  // Rebuild colgroup to match header count
+  cg.innerHTML = '';
+  const pct = (100 / cols);
+  for (let i = 0; i < cols; i++) {
+    const col = document.createElement('col');
+    col.style.width = pct + '%';
+    cg.appendChild(col);
+  }
+}
+
+// Debounced resize observer for all .table
+const _debounce = (fn, d=120) => {
+  let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), d); };
+};
+
+const resizeTables = _debounce(() => {
+  document.querySelectorAll('table.table').forEach(autosizeTable);
+}, 120);
+
+window.addEventListener('resize', resizeTables);
+
+// Example: call after you render/populate each table
+// const tbl = document.getElementById('forecastTable');
+// autosizeTable(tbl);
+
+
 /* ==== Plotly base ==== */
 const BASE_PLOTLY_LAYOUT = {
   template: 'plotly_dark',
@@ -467,6 +512,35 @@ function circMeanDeg(arr){
   if (!n) return null; let ang = Math.atan2(sy,sx)*180/Math.PI; if (ang<0) ang += 360; return ang;
 }
 function angDiff(a,b){ return ((a - b + 540) % 360) - 180; }
+
+// ---- Shared TWS bins & colours (tables + wind rose stay in sync)
+const TWS_BINS = [0, 5, 10, 15, 20, 25, 30, Infinity];   // kt
+const TWS_COLOURS = [
+  '#3d6cff', // 0–5
+  '#1fa35b', // 5–10
+  '#d2b100', // 10–15
+  '#ff7a00', // 15–20
+  '#e13b2d', // 20–25
+  '#7a1830', // 25–30
+  '#7d3cff'  // 30+
+];
+const TWS_BIN_LABELS = (() => {
+  const out = [];
+  for (let i = 0; i < TWS_BINS.length; i++) {
+    const a = TWS_BINS[i], b = TWS_BINS[i+1];
+    out.push(b === Infinity ? `${a}+ kt` : `${a}–${b} kt`);
+  }
+  return out;
+})();
+function twsBinIndex(kn) {
+  if (kn == null || isNaN(kn)) return 0;
+  for (let i = 0; i < TWS_BINS.length; i++) {
+    const a = TWS_BINS[i], b = TWS_BINS[i+1];
+    if (b === Infinity) return (kn >= a) ? i : 0;
+    if (kn >= a && kn < b) return i;
+  }
+  return 0;
+}
 
 /* ==== Heat tables ==== */
 function renderVarMatrixTable(targetEl, timesSorted, modelsWithData, modelSeries, valueGetter, colorGetter, valueFormatter){
@@ -545,25 +619,24 @@ function concatSamples(list){
 const BIN_SIZE = 2;
 
 function binWindsCustom(speeds, dirs){
-  const maxSpd = Math.max(0, Math.ceil(Math.max(...speeds)));
-  const nSB = Math.ceil(maxSpd / BIN_SIZE);
-  const counts = Array.from({length:36}, ()=>Array.from({length:nSB}, ()=>0));
+  // 36 direction bins (10° each), and fixed TWS bins from TWS_BINS
+  const counts = Array.from({length:36}, () => Array.from({length:TWS_BINS.length}, ()=>0));
   const dirTotals = new Array(36).fill(0);
 
-  for (let i=0;i<speeds.length;i++){
+  for (let i = 0; i < speeds.length; i++){
     const s = speeds[i], d = dirs[i];
     const bDir = degToBin10(d);
-    if (bDir==null) continue;
-    let bSpd = Math.floor(s / BIN_SIZE);
-    if (bSpd >= nSB) bSpd = nSB-1;
+    if (bDir == null) continue;
+    const bSpd = twsBinIndex(s);
     counts[bDir][bSpd] += 1;
     dirTotals[bDir] += 1;
   }
 
-  const speedBins = Array.from({length:nSB}, (_,i)=>[i*BIN_SIZE, (i+1)*BIN_SIZE]);
+  // Rose spokes centered at 5°, 15°, … (same as your current labels)
   const dirLabels = Array.from({length:36}, (_,i)=> i*10 + 5);
-  return { counts, dirTotals, speedBins, dirLabels };
+  return { counts, dirTotals, speedBins: TWS_BIN_LABELS, dirLabels };
 }
+
 function computeWindStats(speeds, dirs){
   const n = speeds.length;
   if (!n) return { meanTws:null, calmPct:null, peakPct:null, peakDir:null };
@@ -579,22 +652,19 @@ function computeWindStats(speeds, dirs){
   const peakDir = (peakIdx*10 + 5) % 360;
   return { meanTws, calmPct, peakPct, peakDir };
 }
+
 function makeWindRoseTraces(counts, speedBins, dirLabels){
   const traces = [];
   for (let sb = 0; sb < speedBins.length; sb++){
     const r = counts.map(row => row[sb] || 0);
     if (!r.some(v => v > 0)) continue;
-
-    const [lo, hi] = speedBins[sb];
-    const name = `${lo}–${hi} kt`;
-
     traces.push({
       type: 'barpolar',
       r,
       theta: dirLabels,
-      name,
-      hovertemplate: 'Dir %{theta}°<br>%{r:.1f}%<br>Speed ' + name + '<extra></extra>',
-      marker: {}
+      name: speedBins[sb],
+      hovertemplate: 'Dir %{theta}°<br>%{r:.1f}%<br>' + speedBins[sb] + '<extra></extra>',
+      marker: { color: TWS_COLOURS[sb] }
     });
   }
   return traces;
@@ -702,7 +772,7 @@ async function run(){
             <div class="small muted" id='blh_meta_${loc.id}'></div>
           </div>
         </div>`;
-      pane.appendChild(profileWrap);
+      locContainer.appendChild(profileWrap);
       paneCharts[loc.id].push(`profile_left_${loc.id}`);
 
       /* --- Wind Rose section MOVED ABOVE TABLES --- */
@@ -711,10 +781,11 @@ async function run(){
       roseCard.style.marginTop = '12px';
       const roseSelectId = `rose_sel_${loc.id}`;
       const rosePlotId   = `rose_plot_${loc.id}`;
+	  paneCharts[loc.id].push(rosePlotId);
       const roseTblId    = `rose_tbl_${loc.id}`;
       const modelOptions = []; // fill after data load
       roseCard.innerHTML = `
-        <div class='section-title'>Wind Rose (10° bins, ${BIN_SIZE}-kt steps) & Summary</div>
+        <div class='section-title'>Wind Rose (10° bins, TWS bins as per tables) & Summary</div>
         <div class='row small' style="align-items:center; gap:12px;">
           <label>Dataset:
             <select id="${roseSelectId}"></select>
@@ -735,7 +806,7 @@ async function run(){
             </table>
           </div>
         </div>`;
-      pane.appendChild(roseCard);
+      locContainer.appendChild(roseCard);
 
       const modelSeries = {};
       const modelStatus = {};
@@ -1103,7 +1174,7 @@ async function run(){
       });
 
       function twsGetter(ts, mdl){ const rec = modelSeries[mdl]; const i = idxMap[mdl].get(ts); if (i==null) return ''; const v = rec.wind_speed_10m[i]; return (v==null)? '' : v; }
-      function twsColor(v){ return colorForKnots(Number(v)); }
+      function twsColor(v){ const k = twsBinIndex(Number(v)); return TWS_COLOURS[k] || '#444'; }
       function t2mGetter(ts, mdl){ const rec = modelSeries[mdl]; const i = idxMap[mdl].get(ts); if (i==null) return ''; const v = rec.temperature_2m[i]; return (v==null)? '' : v; }
       function t2mColor(v){ return colorForTempC(Number(v)); }
       function twdGetter(ts, mdl){ const rec = modelSeries[mdl]; const i = idxMap[mdl].get(ts); if (i==null) return ''; const v = rec.wind_direction_10m[i]; return (v==null)? '' : v; }
