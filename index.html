@@ -656,10 +656,18 @@ function binWindsCustom(speeds, dirs){
 
 function computeWindStats(speeds, dirs){
   const n = speeds.length;
-  if (!n) return { meanTws:null, calmPct:null, peakPct:null, peakDir:null };
-  const calm = speeds.filter(v => v < 4).length;
-  const calmPct = 100 * calm / n;
-  const meanTws = speeds.reduce((a,b)=>a+b,0) / n;
+  if (!n) return { meanTws:null, calmPct:null, highPct25:null, peakPct:null, peakDir:null };
+
+  const CALM_KT = 4;
+  const HIGH_KT = 25;
+
+  const calm = speeds.filter(v => v < CALM_KT).length;
+  const high = speeds.filter(v => v >= HIGH_KT).length;
+
+  const calmPct   = 100 * calm / n;
+  const highPct25 = 100 * high / n;
+  const meanTws   = speeds.reduce((a,b)=>a+b,0) / n;
+
   const bins = new Array(36).fill(0);
   for (let i=0;i<n;i++){
     const b = degToBin10(dirs[i]); if (b!=null) bins[b]++;
@@ -667,7 +675,8 @@ function computeWindStats(speeds, dirs){
   let peakIdx = 0; for (let i=1;i<36;i++) if (bins[i] > bins[peakIdx]) peakIdx = i;
   const peakCnt = bins[peakIdx]; const peakPct = 100 * peakCnt / n;
   const peakDir = (peakIdx*10 + 5) % 360;
-  return { meanTws, calmPct, peakPct, peakDir };
+
+  return { meanTws, calmPct, highPct25, peakPct, peakDir };
 }
 
 function makeWindRoseTraces(counts, speedBins, dirLabels){
@@ -1098,6 +1107,7 @@ async function run(){
               <tr><td>Mean TWS</td><td style="text-align:right;">${formatKn(stats.meanTws)}</td></tr>
               <tr><td>Peak frequency</td><td style="text-align:right;">${formatPct(stats.peakPct)}</td></tr>
               <tr><td>% Calm (&lt;4 kt)</td><td style="text-align:right;">${formatPct(stats.calmPct)}</td></tr>
+			  <tr><td>% &ge;25 kt</td><td style="text-align:right;">${formatPct(stats.highPct25)}</td></tr>
               <tr><td>Peak TWD (dir bin)</td><td style="text-align:right;">${formatDeg(stats.peakDir)}</td></tr>
             `;
           }
@@ -1933,10 +1943,18 @@ function binWindsCustom(speeds, dirs){
 
 function computeWindStats(speeds, dirs){
   const n = speeds.length;
-  if (!n) return { meanTws:null, calmPct:null, peakPct:null, peakDir:null };
-  const calm = speeds.filter(v => v < 4).length;
-  const calmPct = 100 * calm / n;
-  const meanTws = speeds.reduce((a,b)=>a+b,0) / n;
+  if (!n) return { meanTws:null, calmPct:null, highPct25:null, peakPct:null, peakDir:null };
+
+  const CALM_KT = 4;
+  const HIGH_KT = 25;
+
+  const calm = speeds.filter(v => v < CALM_KT).length;
+  const high = speeds.filter(v => v >= HIGH_KT).length;
+
+  const calmPct   = 100 * calm / n;
+  const highPct25 = 100 * high / n;
+  const meanTws   = speeds.reduce((a,b)=>a+b,0) / n;
+
   const bins = new Array(36).fill(0);
   for (let i=0;i<n;i++){
     const b = degToBin10(dirs[i]); if (b!=null) bins[b]++;
@@ -1944,7 +1962,8 @@ function computeWindStats(speeds, dirs){
   let peakIdx = 0; for (let i=1;i<36;i++) if (bins[i] > bins[peakIdx]) peakIdx = i;
   const peakCnt = bins[peakIdx]; const peakPct = 100 * peakCnt / n;
   const peakDir = (peakIdx*10 + 5) % 360;
-  return { meanTws, calmPct, peakPct, peakDir };
+
+  return { meanTws, calmPct, highPct25, peakPct, peakDir };
 }
 
 function makeWindRoseTraces(counts, speedBins, dirLabels){
@@ -2370,6 +2389,7 @@ async function run(){
               <tr><td>Mean TWS</td><td style="text-align:right;">${formatKn(stats.meanTws)}</td></tr>
               <tr><td>Peak frequency</td><td style="text-align:right;">${formatPct(stats.peakPct)}</td></tr>
               <tr><td>% Calm (&lt;4 kt)</td><td style="text-align:right;">${formatPct(stats.calmPct)}</td></tr>
+			  <tr><td>% &ge;25 kt</td><td style="text-align:right;">${formatPct(stats.highPct25)}</td></tr>
               <tr><td>Peak TWD (dir bin)</td><td style="text-align:right;">${formatDeg(stats.peakDir)}</td></tr>
             `;
           }
