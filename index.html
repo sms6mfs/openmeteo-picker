@@ -2325,6 +2325,41 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 }); // DOMContentLoaded for Leaflet & app
+
+// --- Mobile controls panel toggle (final working version) ---
+(function() {
+  const controlsPanel = document.querySelector('.controls-panel');
+  const controlsToggle = document.getElementById('controlsToggle');
+
+  // If either is missing, silently exit
+  if (!controlsPanel || !controlsToggle) return;
+
+  // Detect mobile layout
+  const mq = window.matchMedia('(max-width: 900px)');
+
+  function syncState() {
+    if (!mq.matches) {
+      // Desktop = always open
+      controlsPanel.classList.add('is-open');
+      controlsToggle.style.display = 'none';
+    } else {
+      // Mobile = closed by default
+      controlsPanel.classList.remove('is-open');
+      controlsToggle.style.display = 'inline-flex';
+      controlsToggle.textContent = 'Show controls ▾';
+    }
+  }
+
+  // Toggle open/closed
+  controlsToggle.addEventListener('click', () => {
+    const isOpen = controlsPanel.classList.toggle('is-open');
+    controlsToggle.textContent = isOpen ? 'Hide controls ▲' : 'Show controls ▾';
+  });
+
+  mq.addEventListener('change', syncState);
+  syncState();
+})();
+
 </script>
 </body>
 </html>
